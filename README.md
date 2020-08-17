@@ -1,6 +1,6 @@
 # Baguette
 
-`bget` : The better get.
+`bget` : A better `get`.
 
 The is meant to be an enhanced version of lodash `get`.
 
