@@ -4,7 +4,7 @@
 
 The is meant to be an enhanced version of lodash `get`.
 
-In addition to standard object traversal, `bget` will allow you to traverse and operate on arrays. The goal being to provide the capability to perform filters, maps, and reductions via a string path.
+In addition to standard object traversal via string path, `bget` will allow you to traverse and operate on arrays. The goal being to provide the capability to perform filters, maps, and reductions via a string path.
 
 # Usage
 
