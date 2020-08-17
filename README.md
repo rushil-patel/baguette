@@ -22,20 +22,20 @@ bget(object, 'items[id === "1"].id') // -> '1'
 
 let nestedLists = [[{name: 'tiger'}, {name: 'lion'}], [{name: 'wolf'}, {name: 'dog'}]]
 
-bget(object, 'items[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
+bget(nestedLists, 'items[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 ```
 
 ### propsals
 
 #### reduce ('<')
 ```js
-bget(object, 'items[]<[]') // flattens out the nests lists into single list
+bget(foo, 'items[]<[]') // flattens out the nests lists into single list
 ```
 
 #### get multiple fields
 
 ```js
-bget(object, 'items[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
+bget(foo, 'items[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
 ```
 
 
