@@ -22,7 +22,7 @@ take(object, 'items[id === "1"].id') // -> '1'
 
 let nestedLists = [[{name: 'tiger'}, {name: 'lion'}], [{name: 'wolf'}, {name: 'dog'}]]
 
-take(object, `items[][].name) // -> [['tiger', lion'], ['wolf', 'dog']]
+take(object, 'items[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 ```
 
 ### propsals
@@ -35,7 +35,7 @@ take(object, 'items[]<[]') // flattens out the nests lists into single list
 #### get multiple fields
 
 ```js
-take(object, 'items[].fieldOne+fieldTwo // returns a mapping of items with the fieldsOne and fieldsTwo
+take(object, 'items[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
 ```
 
 
