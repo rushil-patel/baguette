@@ -14,28 +14,28 @@ import {bget} from 'baguette';
 
 let object = {items: [{id: '0'}, {id: '1'},{id: '2'}]}
 
-take(object, 'items[1]') // -> {id: '1'}
-take(object, 'items[1].id') // -> '1'
-take(object, 'items[].id') // -> ['0', '1', '2']
-take(object, 'items[id === "1"]') // -> [{id: '1'}]
-take(object, 'items[id === "1"].id') // -> '1'
+bget(object, 'items[1]') // -> {id: '1'}
+bget(object, 'items[1].id') // -> '1'
+bget(object, 'items[].id') // -> ['0', '1', '2']
+bget(object, 'items[id === "1"]') // -> [{id: '1'}]
+bget(object, 'items[id === "1"].id') // -> '1'
 
 let nestedLists = [[{name: 'tiger'}, {name: 'lion'}], [{name: 'wolf'}, {name: 'dog'}]]
 
-take(object, 'items[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
+bget(object, 'items[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 ```
 
 ### propsals
 
 #### reduce ('<')
 ```js
-take(object, 'items[]<[]') // flattens out the nests lists into single list
+bget(object, 'items[]<[]') // flattens out the nests lists into single list
 ```
 
 #### get multiple fields
 
 ```js
-take(object, 'items[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
+bget(object, 'items[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
 ```
 
 
