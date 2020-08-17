@@ -1,0 +1,39 @@
+{
+  "name": "baguette",
+  "version": "1.0.0",
+  "description": "a better get, that works with objects and arrays",
+  "main": "src/index.js",
+  "author": "Rushil Patel",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "clean": "rimraf lib",
+    "test": "yarn lint:test && yarn cover",
+    "test:only": "mocha --require @babel/register --require core-js --recursive",
+    "test:watch": "yarn test -- --watch",
+    "cover": "nyc --check-coverage yarn test:only",
+    "lint": "standard --fix",
+    "lint:test": "standard --fix --env mocha",
+    "build": "yarn clean && cross-env BABEL_ENV=production rollup -c && yarn uglify",
+    "uglify": "uglifyjs ./lib/index.min.js -c -m -e -o ./lib/index.min.js"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.11.0",
+    "@babel/register": "^7.10.5",
+    "babel-eslint": "^10.1.0",
+    "babel-plugin-add-module-exports": "^1.0.2",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-minify": "^0.5.1",
+    "chai": "^4.2.0",
+    "cross-env": "^7.0.2",
+    "eslint": "^7.7.0",
+    "eslint-plugin-import": "^2.22.0",
+    "mocha": "^8.1.1",
+    "nyc": "^15.1.0",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.26.0",
+    "rollup-plugin-babel": "^4.4.0",
+    "standard": "^14.3.4",
+    "uglify-js": "^3.10.1"
+  }
+}
