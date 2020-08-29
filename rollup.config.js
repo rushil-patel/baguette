@@ -1,9 +1,11 @@
 import babel from 'rollup-plugin-babel'
+import typescript from 'rollup-plugin-typescript2'
+import { terser } from 'rollup-plugin-terser'
 
 export default {
-  input: './src/index.js',
+  input: './src/index.ts',
   output: {
-    file: './lib/index.min.js',
+    file: './dist/index.min.js',
     format: 'iife',
     name: 'index',
     sourcemap: false
@@ -11,6 +13,11 @@ export default {
   plugins: [
     babel({
       exclude: 'node_modules/**'
-    })
+    }),
+    typescript({
+      typescript: require('typescript')
+    }),
+    terser()
   ]
+
 }

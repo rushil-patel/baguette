@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "a better get, that works with objects and arrays",
   "main": "src/index.js",
+  "module": "dist/index.min.js",
+  "types": "dist/index.d.ts",
   "author": "Rushil Patel",
   "license": "MIT",
   "private": false,
@@ -14,8 +16,7 @@
     "cover": "nyc --check-coverage yarn test:only",
     "lint": "standard --fix",
     "lint:test": "standard --fix --env mocha",
-    "build": "yarn clean && cross-env BABEL_ENV=production rollup -c && yarn uglify",
-    "uglify": "uglifyjs ./lib/index.min.js -c -m -e -o ./lib/index.min.js"
+    "build": "yarn clean && cross-env BABEL_ENV=production rollup -c"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.11.0",
@@ -31,9 +32,12 @@
     "mocha": "^8.1.1",
     "nyc": "^15.1.0",
     "rimraf": "^3.0.2",
-    "rollup": "^2.26.0",
+    "rollup": "^2.26.8",
     "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-terser": "^7.0.1",
+    "rollup-plugin-typescript2": "^0.27.2",
     "standard": "^14.3.4",
+    "typescript": "^4.0.2",
     "uglify-js": "^3.10.1"
   }
 }
