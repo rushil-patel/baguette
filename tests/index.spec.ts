@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-expressions */
+console.log(process.cwd());
 import { expect } from 'chai'
 import { bget } from '../src'
 
@@ -27,7 +28,7 @@ describe('bget: API', () => {
 
       /* eslint-disable no-new-wrappers */
       expect(bget(testList, new String(), defaultValue)).to.equal(testList)
-      expect(bget(testObject, '', new String(), defaultValue)).to.equal(testObject)
+      expect(bget(testObject, new String(), defaultValue)).to.equal(testObject)
       /* eslint-enable no-new-wrappers */
       expect(bget(testList, undefined, defaultValue)).to.equal(testList)
     })

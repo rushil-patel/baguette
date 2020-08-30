@@ -152,7 +152,7 @@ const applyExpression = <T>(array: T[], expression: string): any => {
   })
 }
 
-export const bget = (root: Object, path: string | String = '', fallback: any): any => {
+export const bget = (root: Object, path: string | String = '', fallback?: any): any => {
   let pathArg: string;
   if (!(root instanceof Object)) {
     return fallback
