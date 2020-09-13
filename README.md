@@ -29,13 +29,13 @@ bget(nestedLists, '[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 
 #### reduce ('<')
 ```js
-bget(foo, 'items[]<[]') // flattens out the nests lists into single list
+bget(foo, '[]<[]') // flattens out the nests lists into single list
 ```
 
 #### get multiple fields
 
 ```js
-bget(foo, 'items[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
+bget(foo, '[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
 ```
 
 
