@@ -22,7 +22,7 @@ bget(object, 'items[id === "1"].id') // -> '1'
 
 let nestedLists = [[{name: 'tiger'}, {name: 'lion'}], [{name: 'wolf'}, {name: 'dog'}]]
 
-bget(nestedLists, 'items[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
+bget(nestedLists, '[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 ```
 
 ### propsals
