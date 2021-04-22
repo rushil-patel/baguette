@@ -25,7 +25,7 @@ let nestedLists = [[{name: 'tiger'}, {name: 'lion'}], [{name: 'wolf'}, {name: 'd
 bget(nestedLists, '[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 ```
 
-### propsals
+### proposals
 
 #### reduce ('<')
 ```js
