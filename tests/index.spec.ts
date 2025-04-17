@@ -166,3 +166,73 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+// New tests for the reduce functionality
+describe('Reduce functionality', () => {
+  it('flattens nested arrays with reduce operator', () => {
+    const nestedArrays = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    expect(bget(nestedArrays, '<')).to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+
+  it('flattens nested object arrays with reduce operator', () => {
+    const nestedObjectArrays = [
+      [{ id: 'a1' }, { id: 'a2' }],
+      [{ id: 'b1' }, { id: 'b2' }]
+    ]
+    expect(bget(nestedObjectArrays, '<')).to.deep.equal([
+      { id: 'a1' }, { id: 'a2' }, { id: 'b1' }, { id: 'b2' }
+    ])
+  })
+
+  it('allows chaining after reduce', () => {
+    const nestedObjectArrays = [
+      [{ id: 'a1', value: 1 }, { id: 'a2', value: 2 }],
+      [{ id: 'b1', value: 3 }, { id: 'b2', value: 4 }]
+    ]
+    expect(bget(nestedObjectArrays, '<.id')).to.deep.equal(['a1', 'a2', 'b1', 'b2'])
+  })
+
+  it('works with the example from README', () => {
+    const foo = [[1, 2], [3, 4], [5, 6]]
+    const result = bget(foo, '[]<')
+    expect(result).to.deep.equal([1, 2, 3, 4, 5, 6])
+  })
+})
+
+// New tests for the multiple fields functionality
+describe('Multiple fields functionality', () => {
+  it('gets multiple fields from objects in an array', () => {
+    const items = [
+      { id: '1', name: 'Item 1', description: 'First item' },
+      { id: '2', name: 'Item 2', description: 'Second item' }
+    ]
+    
+    const expected = [
+      { id: '1', name: 'Item 1' },
+      { id: '2', name: 'Item 2' }
+    ]
+    
+    expect(bget(items, '[].id+name')).to.deep.equal(expected)
+  })
+  
+  it('gets multiple fields from a single object', () => {
+    const item = { id: '1', name: 'Item 1', description: 'First item' }
+    const expected = { id: '1', name: 'Item 1' }
+    
+    expect(bget(item, 'id+name')).to.deep.equal(expected)
+  })
+  
+  it('works with the example from README', () => {
+    const foo = [
+      { fieldOne: 'a', fieldTwo: 1, fieldThree: true },
+      { fieldOne: 'b', fieldTwo: 2, fieldThree: false }
+    ]
+    
+    const expected = [
+      { fieldOne: 'a', fieldTwo: 1 },
+      { fieldOne: 'b', fieldTwo: 2 }
+    ]
+    
+    expect(bget(foo, '[].fieldOne+fieldTwo')).to.deep.equal(expected)
+  })
+})
