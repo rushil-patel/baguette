@@ -6,172 +6,177 @@ const Symbols = {
   EXP: 'EXP',
   NONE: 'NONE',
   INTEGER: 'INTEGER'
-}
+} as const;
 
-const getToken = (path: string): string => {
+type SymbolType = typeof Symbols[keyof typeof Symbols];
+
+const getToken = (path: string): SymbolType => {
   if (path === '') {
-    return Symbols.NONE
+    return Symbols.NONE;
   }
   if (!isNaN(Number(path))) {
-    return Symbols.INTEGER
+    return Symbols.INTEGER;
   }
-  const nextChar = path[0]
+  const nextChar = path[0];
 
   switch (nextChar) {
     case Symbols.DOT:
-      return Symbols.DOT
+      return Symbols.DOT;
     case Symbols.LBRACK:
-      return Symbols.LBRACK
+      return Symbols.LBRACK;
     case Symbols.RBRACK:
-      return Symbols.RBRACK
+      return Symbols.RBRACK;
     default:
-      return Symbols.CHAR
+      return Symbols.CHAR;
   }
-}
+};
 
-// Parse from top of abstract syntax tree
-const parsePath = (root: Object, path: string = '') => {
-  // base cases
-  const token = getToken(path)
+const parsePath = <T>(root: T, path: string = ''): any => {
+  const token = getToken(path);
 
   switch (token) {
     case Symbols.DOT:
-      return parseDot(root, path)
+      return parseDot(root, path);
     case Symbols.LBRACK:
-      return parseLBrack(root as Array<any>, path)
+      return parseLBrack(root as any[], path);
     case Symbols.RBRACK:
-      return parseRBrack(root, path)
+      return parseRBrack(root, path);
     case Symbols.CHAR:
-      return parseObjectField(root, path)
+      return parseObjectField(root, path);
     case Symbols.NONE:
-      return root
+      return root;
   };
-}
+};
 
-const throwUnexpectedToken = (token: string) => {
-  throw Error(`Unexpected token of ${token}`)
-}
+const throwUnexpectedToken = (token: string): never => {
+  throw Error(`Unexpected token of ${token}`);
+};
 
-const throwPathDoesNotExistAt = (path: string) => {
-  throw Error(`Path "${path}" does not exist`)
-}
+const throwPathDoesNotExistAt = (path: string): never => {
+  throw Error(`Path "${path}" does not exist`);
+};
 
-// TODO: consider using https://github.com/mafintosh/generate-function
-function evalInScope<T>(expression: String, context: T) {
-  const body: string = `return ${expression};`
+function evalInScope<T, R>(expression: string, context: T): R {
+  const body: string = `return ${expression};`;
   /* eslint-disable no-new-func */
-  return (new Function(...Object.keys(context), body))(...Object.values(context))
+  return (new Function(...Object.keys(context as object), body))(...Object.values(context as object)) as R;
   /* eslint-enable no-new-func */
 }
 
-type SignalFn = (character: string) => Boolean;
+type SignalFn = (character: string) => boolean;
 
-const scanPathUntil = (path: string, signal: SignalFn) => {
-  let i = 0
-  let scanned = ''
-  let rest = path
-  while (i < path.length && signal(rest)) {
-    scanned += path[i]
-    i += 1
-    rest = path.slice(i)
-  }
-  return { scan: scanned, rest: rest }
+interface ScanResult {
+  scan: string;
+  rest: string;
 }
 
-const parseDot = (root: Object, path: string = '') => {
-  // slice over 'dot'
-  const rest = path.slice(1)
-  const token = getToken(rest)
+const scanPathUntil = (path: string, signal: SignalFn): ScanResult => {
+  let i = 0;
+  let scanned = '';
+  let rest = path;
+  while (i < path.length && signal(rest)) {
+    scanned += path[i];
+    i += 1;
+    rest = path.slice(i);
+  }
+  return { scan: scanned, rest: rest };
+};
+
+const parseDot = <T>(root: T, path: string = ''): any => {
+  const rest = path.slice(1);
+  const token = getToken(rest);
   switch (token) {
     case Symbols.CHAR:
-      return parseObjectField(root, rest)
+      return parseObjectField(root, rest);
     case Symbols.NONE:
-      return root
+      return root;
     default:
-      throwUnexpectedToken(token)
+      throwUnexpectedToken(token);
   }
-}
+};
 
-const parseObjectField = (root: Object, path: string = '') => {
-  const signal = (c) => getToken(c) === Symbols.CHAR
-  const { scan: field, rest } = scanPathUntil(path, signal)
-  let nextRoot
+const parseObjectField = <T>(root: T, path: string = ''): any => {
+  const signal = (c: string): boolean => getToken(c) === Symbols.CHAR;
+  const { scan: field, rest } = scanPathUntil(path, signal);
+  let nextRoot: any;
 
   if (Array.isArray(root)) {
     nextRoot = root.map(element => {
       if (Object.prototype.hasOwnProperty.call(element, field)) {
-        return element[field]
+        return element[field as keyof typeof element];
       }
-      throwPathDoesNotExistAt(path)
-    })
-  } else if (Object.prototype.hasOwnProperty.call(root, field)) {
-    nextRoot = root[field]
+      throwPathDoesNotExistAt(path);
+    });
+  } else if (root && typeof root === 'object' && Object.prototype.hasOwnProperty.call(root, field)) {
+    nextRoot = (root as Record<string, any>)[field];
   } else {
-    throwPathDoesNotExistAt(path)
+    throwPathDoesNotExistAt(path);
   }
 
-  return parsePath(nextRoot, rest)
-}
+  return parsePath(nextRoot, rest);
+};
 
-const parseLBrack = <T>(root: T[], path: string) => {
-  // slice over 'lbrack'
-  const restPath = path.slice(1)
-  const signal = (c) => getToken(c) !== Symbols.RBRACK
-  const { scan: subPath, rest } = scanPathUntil(restPath, signal)
+const parseLBrack = <T>(root: T[], path: string): any => {
+  const restPath = path.slice(1);
+  const signal = (c: string): boolean => getToken(c) !== Symbols.RBRACK;
+  const { scan: subPath, rest } = scanPathUntil(restPath, signal);
 
-  const token = getToken(subPath)
-  let nextRoot
+  const token = getToken(subPath);
+  let nextRoot: any;
   switch (token) {
     case Symbols.INTEGER: {
-      const idx = Number(subPath)
-      nextRoot = root[idx]
-      break
+      const idx = Number(subPath);
+      nextRoot = root[idx];
+      break;
     }
     case Symbols.NONE: {
-      return root.map(element => parsePath(element, rest))
+      return root.map(element => parsePath(element, rest));
     }
     default: {
-      const expression = subPath
-      nextRoot = applyExpression(root, expression)
-      break
+      const expression = subPath;
+      nextRoot = applyExpression(root, expression);
+      break;
     }
   }
-  //  returns next root
-  return parsePath(nextRoot, rest)
-}
+  return parsePath(nextRoot, rest);
+};
 
-const parseRBrack = (root: Object, path: String) => {
-  // slice over rbrack
-  const rest = path.slice(1)
-  return parsePath(root, rest)
-}
+const parseRBrack = <T>(root: T, path: string): any => {
+  const rest = path.slice(1);
+  return parsePath(root, rest);
+};
 
-const applyExpression = <T>(array: T[], expression: string): any => {
+const applyExpression = <T>(array: T[], expression: string): T[] => {
   return array.filter((element: T) => {
-    return evalInScope(expression, element)
-  })
-}
+    return evalInScope<T, boolean>(expression, element);
+  });
+};
 
-export const bget = (root: Object, path: string | String = '', fallback?: any): any => {
+export const bget = <T, R = any>(root: T, path?: string | String, fallback?: R): R | any => {
   let pathArg: string;
-  if (!(root instanceof Object)) {
-    return fallback
+  
+  if (!(root && typeof root === 'object')) {
+    return fallback as R;
+  }
+
+  if (path === undefined) {
+    return root as any;
   }
 
   if (!(typeof path === 'string') && !(path instanceof String)) {
-    return fallback
+    return fallback as R;
   }
 
   if (path instanceof String) {
-    pathArg = path.toString()
+    pathArg = path.toString();
   }
   else {
     pathArg = path;
   }
 
   try {
-    return parsePath(root, pathArg)
+    return parsePath(root, pathArg);
   } catch (e) {
-    return fallback
+    return fallback as R;
   }
-}
+};
