@@ -166,3 +166,74 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+// New tests for the reduce ('<') functionality
+describe('reduce functionality', () => {
+  it('flattens nested lists with []<[]', () => {
+    const nestedLists = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    expect(bget(nestedLists, '[]<[]')).to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+
+  it('flattens nested object lists with []<[]', () => {
+    const nestedObjectLists = [
+      [{ id: 'a' }, { id: 'b' }],
+      [{ id: 'c' }, { id: 'd' }]
+    ]
+    expect(bget(nestedObjectLists, '[]<[]')).to.deep.equal([
+      { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }
+    ])
+  })
+
+  it('flattens and maps nested object lists with []<[].id', () => {
+    const nestedObjectLists = [
+      [{ id: 'a' }, { id: 'b' }],
+      [{ id: 'c' }, { id: 'd' }]
+    ]
+    expect(bget(nestedObjectLists, '[]<[].id')).to.deep.equal(['a', 'b', 'c', 'd'])
+  })
+})
+
+// New tests for the get multiple fields functionality
+describe('get multiple fields functionality', () => {
+  it('returns objects with selected fields using +', () => {
+    const testList = [
+      { id: '1', name: 'John', age: 30, city: 'New York' },
+      { id: '2', name: 'Jane', age: 25, city: 'Boston' }
+    ]
+    
+    const expected = [
+      { id: '1', name: 'John' },
+      { id: '2', name: 'Jane' }
+    ]
+    
+    expect(bget(testList, '[].id+name')).to.deep.equal(expected)
+  })
+
+  it('returns objects with selected fields using + with nested paths', () => {
+    const testList = [
+      { id: '1', profile: { name: 'John', age: 30 }, address: { city: 'New York' } },
+      { id: '2', profile: { name: 'Jane', age: 25 }, address: { city: 'Boston' } }
+    ]
+    
+    const expected = [
+      { id: '1', name: 'John', city: 'New York' },
+      { id: '2', name: 'Jane', city: 'Boston' }
+    ]
+    
+    expect(bget(testList, '[].id+profile.name+address.city')).to.deep.equal(expected)
+  })
+
+  it('handles non-existent fields gracefully', () => {
+    const testList = [
+      { id: '1', name: 'John' },
+      { id: '2', name: 'Jane', age: 25 }
+    ]
+    
+    const expected = [
+      { id: '1' },
+      { id: '2', age: 25 }
+    ]
+    
+    expect(bget(testList, '[].id+age')).to.deep.equal(expected)
+  })
+})
