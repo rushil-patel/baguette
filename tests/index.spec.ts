@@ -166,3 +166,82 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+// Tests for the new features
+describe('Reduce operation', () => {
+  it('flattens nested arrays with <[] operator', () => {
+    const nestedArrays = [[1, 2], [3, 4], [5, 6]]
+    expect(bget(nestedArrays, '<[]')).to.deep.equal([1, 2, 3, 4, 5, 6])
+  })
+
+  it('flattens nested object arrays with <[] operator', () => {
+    const nestedObjectArrays = [
+      [{ id: 'a' }, { id: 'b' }],
+      [{ id: 'c' }, { id: 'd' }]
+    ]
+    expect(bget(nestedObjectArrays, '<[]')).to.deep.equal([
+      { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }
+    ])
+  })
+
+  it('allows operations on flattened arrays', () => {
+    const nestedArrays = [
+      [{ id: 'a', value: 1 }, { id: 'b', value: 2 }],
+      [{ id: 'c', value: 3 }, { id: 'd', value: 4 }]
+    ]
+    expect(bget(nestedArrays, '<[].id')).to.deep.equal(['a', 'b', 'c', 'd'])
+  })
+
+  it('returns default value when reduce is used on non-array', () => {
+    const obj = { a: 1, b: 2 }
+    const defaultValue = 'default'
+    expect(bget(obj, '<[]', defaultValue)).to.equal(defaultValue)
+  })
+})
+
+describe('Multiple fields', () => {
+  it('returns multiple fields from an object', () => {
+    const obj = { name: 'John', age: 30, city: 'New York' }
+    expect(bget(obj, 'name+age')).to.deep.equal({ name: 'John', age: 30 })
+  })
+
+  it('returns multiple fields from array items', () => {
+    const users = [
+      { id: 1, name: 'John', age: 30, city: 'New York' },
+      { id: 2, name: 'Jane', age: 25, city: 'Boston' }
+    ]
+    expect(bget(users, 'name+age')).to.deep.equal([
+      { name: 'John', age: 30 },
+      { name: 'Jane', age: 25 }
+    ])
+  })
+
+  it('returns multiple fields with bracket notation', () => {
+    const users = [
+      { id: 1, name: 'John', age: 30, city: 'New York' },
+      { id: 2, name: 'Jane', age: 25, city: 'Boston' }
+    ]
+    expect(bget(users, '[].name+age')).to.deep.equal([
+      { name: 'John', age: 30 },
+      { name: 'Jane', age: 25 }
+    ])
+  })
+
+  it('returns default value when fields do not exist', () => {
+    const obj = { name: 'John', age: 30 }
+    const defaultValue = 'default'
+    expect(bget(obj, 'name+nonexistent', defaultValue)).to.equal(defaultValue)
+  })
+
+  it('combines with other operations', () => {
+    const users = [
+      { id: 1, name: 'John', age: 30, active: true },
+      { id: 2, name: 'Jane', age: 25, active: false },
+      { id: 3, name: 'Bob', age: 40, active: true }
+    ]
+    expect(bget(users, "[active === true].name+age")).to.deep.equal([
+      { name: 'John', age: 30 },
+      { name: 'Bob', age: 40 }
+    ])
+  })
+})
