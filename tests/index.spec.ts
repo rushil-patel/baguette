@@ -166,3 +166,79 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+describe('Reduce operator (<)', () => {
+  it('flattens nested arrays', () => {
+    const nestedList = [
+      [1, 2, 3],
+      [4, 5, 6]
+    ]
+    expect(bget(nestedList, '<')).to.deep.equal([1, 2, 3, 4, 5, 6])
+  })
+
+  it('flattens nested arrays of objects', () => {
+    const nestedList = [
+      [{ id: 'a' }, { id: 'b' }],
+      [{ id: 'c' }, { id: 'd' }]
+    ]
+    expect(bget(nestedList, '<')).to.deep.equal([
+      { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }
+    ])
+  })
+
+  it('flattens and then applies further operations', () => {
+    const nestedList = [
+      [{ id: 'a', value: 1 }, { id: 'b', value: 2 }],
+      [{ id: 'c', value: 3 }, { id: 'd', value: 4 }]
+    ]
+    expect(bget(nestedList, '<.id')).to.deep.equal(['a', 'b', 'c', 'd'])
+  })
+
+  it('works with complex nested structures', () => {
+    const complexList = [
+      [{ items: [{ id: 'a1' }, { id: 'a2' }] }],
+      [{ items: [{ id: 'b1' }, { id: 'b2' }] }]
+    ]
+    expect(bget(complexList, '<.items[].id')).to.deep.equal([
+      ['a1', 'a2'], ['b1', 'b2']
+    ])
+  })
+})
+
+describe('Multiple fields selector (+)', () => {
+  it('selects multiple fields from an object', () => {
+    const obj = { id: '123', name: 'John', age: 30 }
+    expect(bget(obj, 'id+name')).to.deep.equal({ id: '123', name: 'John' })
+  })
+
+  it('selects multiple fields from objects in an array', () => {
+    const list = [
+      { id: '1', name: 'John', age: 30 },
+      { id: '2', name: 'Jane', age: 25 }
+    ]
+    expect(bget(list, 'id+name')).to.deep.equal([
+      { id: '1', name: 'John' },
+      { id: '2', name: 'Jane' }
+    ])
+  })
+
+  it('works with further path traversal', () => {
+    const list = [
+      { id: '1', user: { name: 'John', email: 'john@example.com' } },
+      { id: '2', user: { name: 'Jane', email: 'jane@example.com' } }
+    ]
+    // First get the user objects
+    const users = bget(list, 'user')
+    // Then get the name and email fields from each user
+    expect(bget(users, 'name+email')).to.deep.equal([
+      { name: 'John', email: 'john@example.com' },
+      { name: 'Jane', email: 'jane@example.com' }
+    ])
+  })
+
+  it('returns default value when a field does not exist', () => {
+    const obj = { id: '123', name: 'John' }
+    const defaultValue = { error: 'Field not found' }
+    expect(bget(obj, 'id+nonexistent', defaultValue)).to.equal(defaultValue)
+  })
+})

@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  REDUCE: '<',
+  PLUS: '+'
 }
 
 const getToken = (path: string): string => {
@@ -24,6 +26,8 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.REDUCE:
+      return Symbols.REDUCE
     default:
       return Symbols.CHAR
   }
@@ -43,6 +47,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseRBrack(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
+    case Symbols.REDUCE:
+      return parseReduce(root as Array<any>, path)
     case Symbols.NONE:
       return root
   };
@@ -93,6 +99,11 @@ const parseDot = (root: Object, path: string = '') => {
 }
 
 const parseObjectField = (root: Object, path: string = '') => {
+  // Check if we have a multi-field selector (field1+field2)
+  if (path.includes(Symbols.PLUS)) {
+    return parseMultipleFields(root, path)
+  }
+
   const signal = (c) => getToken(c) === Symbols.CHAR
   const { scan: field, rest } = scanPathUntil(path, signal)
   let nextRoot
@@ -111,6 +122,62 @@ const parseObjectField = (root: Object, path: string = '') => {
   }
 
   return parsePath(nextRoot, rest)
+}
+
+const parseMultipleFields = (root: Object, path: string = '') => {
+  // Split the path at the first dot or bracket to get the multi-field part
+  const nextDotIndex = path.indexOf(Symbols.DOT)
+  const nextBracketIndex = path.indexOf(Symbols.LBRACK)
+  
+  let endIndex = path.length;
+  if (nextDotIndex !== -1 && !path.substring(0, nextDotIndex).includes(Symbols.PLUS)) {
+    endIndex = Math.min(endIndex, nextDotIndex)
+  }
+  if (nextBracketIndex !== -1) {
+    endIndex = Math.min(endIndex, nextBracketIndex)
+  }
+  
+  const multiFieldPart = path.substring(0, endIndex)
+  const rest = path.substring(endIndex)
+  
+  const fields = multiFieldPart.split(Symbols.PLUS)
+  
+  if (Array.isArray(root)) {
+    // If root is an array, apply the multi-field selection to each element
+    const result = root.map(element => {
+      const obj = {}
+      fields.forEach(field => {
+        try {
+          const value = parsePath(element, field)
+          // Extract the field name - either the full field if no dots, or the part after the last dot
+          const fieldName = field.includes(Symbols.DOT) 
+            ? field.substring(field.lastIndexOf(Symbols.DOT) + 1) 
+            : field
+          obj[fieldName] = value
+        } catch (e) {
+          throwPathDoesNotExistAt(field)
+        }
+      })
+      return obj
+    })
+    return parsePath(result, rest)
+  } else {
+    // If root is an object, create a new object with selected fields
+    const obj = {}
+    fields.forEach(field => {
+      try {
+        const value = parsePath(root, field)
+        // Extract the field name - either the full field if no dots, or the part after the last dot
+        const fieldName = field.includes(Symbols.DOT) 
+          ? field.substring(field.lastIndexOf(Symbols.DOT) + 1) 
+          : field
+        obj[fieldName] = value
+      } catch (e) {
+        throwPathDoesNotExistAt(field)
+      }
+    })
+    return parsePath(obj, rest)
+  }
 }
 
 const parseLBrack = <T>(root: T[], path: string) => {
@@ -144,6 +211,16 @@ const parseRBrack = (root: Object, path: String) => {
   // slice over rbrack
   const rest = path.slice(1)
   return parsePath(root, rest)
+}
+
+const parseReduce = <T>(root: T[][], path: string) => {
+  // slice over reduce symbol '<'
+  const rest = path.slice(1)
+  
+  // Flatten the array
+  const flattened = root.reduce((acc, val) => acc.concat(val), [])
+  
+  return parsePath(flattened, rest)
 }
 
 const applyExpression = <T>(array: T[], expression: string): any => {
