@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  LESS_THAN: '<',
+  PLUS: '+'
 }
 
 const getToken = (path: string): string => {
@@ -24,6 +26,8 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.LESS_THAN:
+      return Symbols.LESS_THAN
     default:
       return Symbols.CHAR
   }
@@ -43,6 +47,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseRBrack(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
+    case Symbols.LESS_THAN:
+      return parseReduce(root as Array<any>, path)
     case Symbols.NONE:
       return root
   };
@@ -93,6 +99,11 @@ const parseDot = (root: Object, path: string = '') => {
 }
 
 const parseObjectField = (root: Object, path: string = '') => {
+  // Check if we have multiple fields to get (fieldOne+fieldTwo)
+  if (path.includes(Symbols.PLUS)) {
+    return parseMultipleFields(root, path)
+  }
+
   const signal = (c) => getToken(c) === Symbols.CHAR
   const { scan: field, rest } = scanPathUntil(path, signal)
   let nextRoot
@@ -111,6 +122,68 @@ const parseObjectField = (root: Object, path: string = '') => {
   }
 
   return parsePath(nextRoot, rest)
+}
+
+// Implementation for getting multiple fields
+const parseMultipleFields = (root: Object, path: string = '') => {
+  const fieldsEndIndex = path.indexOf(Symbols.DOT) !== -1 
+    ? path.indexOf(Symbols.DOT) 
+    : path.indexOf(Symbols.RBRACK) !== -1 
+      ? path.indexOf(Symbols.RBRACK) 
+      : path.length
+  
+  const fieldsStr = path.substring(0, fieldsEndIndex)
+  const fields = fieldsStr.split(Symbols.PLUS)
+  const rest = path.substring(fieldsEndIndex)
+  
+  if (Array.isArray(root)) {
+    const result = root.map(element => {
+      const obj = {}
+      fields.forEach(field => {
+        if (field.includes(Symbols.DOT)) {
+          // For nested paths like 'details.name', get the value using bget
+          const parts = field.split(Symbols.DOT)
+          const firstPart = parts[0]
+          const remainingPath = parts.slice(1).join(Symbols.DOT)
+          
+          if (Object.prototype.hasOwnProperty.call(element, firstPart)) {
+            const nestedObj = element[firstPart]
+            obj[field] = bget(nestedObj, remainingPath)
+          } else {
+            throwPathDoesNotExistAt(field)
+          }
+        } else if (Object.prototype.hasOwnProperty.call(element, field)) {
+          obj[field] = element[field]
+        } else {
+          throwPathDoesNotExistAt(field)
+        }
+      })
+      return obj
+    })
+    return rest ? parsePath(result, rest) : result
+  } else {
+    const obj = {}
+    fields.forEach(field => {
+      if (field.includes(Symbols.DOT)) {
+        // For nested paths like 'details.name', get the value using bget
+        const parts = field.split(Symbols.DOT)
+        const firstPart = parts[0]
+        const remainingPath = parts.slice(1).join(Symbols.DOT)
+        
+        if (Object.prototype.hasOwnProperty.call(root, firstPart)) {
+          const nestedObj = root[firstPart]
+          obj[field] = bget(nestedObj, remainingPath)
+        } else {
+          throwPathDoesNotExistAt(field)
+        }
+      } else if (Object.prototype.hasOwnProperty.call(root, field)) {
+        obj[field] = root[field]
+      } else {
+        throwPathDoesNotExistAt(field)
+      }
+    })
+    return rest ? parsePath(obj, rest) : obj
+  }
 }
 
 const parseLBrack = <T>(root: T[], path: string) => {
@@ -143,6 +216,26 @@ const parseLBrack = <T>(root: T[], path: string) => {
 const parseRBrack = (root: Object, path: String) => {
   // slice over rbrack
   const rest = path.slice(1)
+  return parsePath(root, rest)
+}
+
+// Implementation for reduce operation
+const parseReduce = <T>(root: T[], path: string) => {
+  // slice over '<'
+  const rest = path.slice(1)
+  
+  if (Array.isArray(root)) {
+    // Flatten the array
+    const flattened = root.reduce((acc, val) => {
+      if (Array.isArray(val)) {
+        return acc.concat(val)
+      }
+      return acc.concat([val])
+    }, [])
+    
+    return parsePath(flattened, rest)
+  }
+  
   return parsePath(root, rest)
 }
 
