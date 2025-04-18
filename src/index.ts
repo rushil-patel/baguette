@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  REDUCE: '<',
+  PLUS: '+'
 }
 
 const getToken = (path: string): string => {
@@ -24,6 +26,8 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.REDUCE:
+      return Symbols.REDUCE
     default:
       return Symbols.CHAR
   }
@@ -43,6 +47,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseRBrack(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
+    case Symbols.REDUCE:
+      return parseReduce(root as Array<any>, path)
     case Symbols.NONE:
       return root
   };
@@ -53,7 +59,7 @@ const throwUnexpectedToken = (token: string) => {
 }
 
 const throwPathDoesNotExistAt = (path: string) => {
-  throw Error(`Path "${path}" does not exist`)
+  throw Error(`Path \"${path}\" does not exist`)
 }
 
 // TODO: consider using https://github.com/mafintosh/generate-function
@@ -97,6 +103,11 @@ const parseObjectField = (root: Object, path: string = '') => {
   const { scan: field, rest } = scanPathUntil(path, signal)
   let nextRoot
 
+  // Check if we have multiple fields (field1+field2)
+  if (field.includes(Symbols.PLUS)) {
+    return parseMultipleFields(root, field, rest)
+  }
+
   if (Array.isArray(root)) {
     nextRoot = root.map(element => {
       if (Object.prototype.hasOwnProperty.call(element, field)) {
@@ -111,6 +122,35 @@ const parseObjectField = (root: Object, path: string = '') => {
   }
 
   return parsePath(nextRoot, rest)
+}
+
+// Parse multiple fields separated by + symbol
+const parseMultipleFields = (root: Object, fieldPath: string, rest: string) => {
+  const fields = fieldPath.split(Symbols.PLUS)
+  
+  if (Array.isArray(root)) {
+    return root.map(element => {
+      const result = {}
+      fields.forEach(field => {
+        if (Object.prototype.hasOwnProperty.call(element, field)) {
+          result[field] = element[field]
+        } else {
+          throwPathDoesNotExistAt(fieldPath)
+        }
+      })
+      return result
+    })
+  } else {
+    const result = {}
+    fields.forEach(field => {
+      if (Object.prototype.hasOwnProperty.call(root, field)) {
+        result[field] = root[field]
+      } else {
+        throwPathDoesNotExistAt(fieldPath)
+      }
+    })
+    return parsePath(result, rest)
+  }
 }
 
 const parseLBrack = <T>(root: T[], path: string) => {
@@ -143,6 +183,20 @@ const parseLBrack = <T>(root: T[], path: string) => {
 const parseRBrack = (root: Object, path: String) => {
   // slice over rbrack
   const rest = path.slice(1)
+  return parsePath(root, rest)
+}
+
+// Parse reduce operation (<)
+const parseReduce = <T>(root: T[], path: string) => {
+  // slice over reduce symbol
+  const rest = path.slice(1)
+  
+  // If we're reducing an array of arrays, flatten it
+  if (root.every(item => Array.isArray(item))) {
+    const flattened = ([] as any[]).concat(...root)
+    return parsePath(flattened, rest)
+  }
+  
   return parsePath(root, rest)
 }
 

@@ -166,3 +166,83 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+// Tests for the new features
+describe('Reduce operation (<)', () => {
+  it('flattens nested arrays into a single array', () => {
+    const nestedArrays = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    expect(bget(nestedArrays, '<')).to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+
+  it('flattens nested object arrays', () => {
+    const nestedObjects = [
+      [{ id: 'a1' }, { id: 'a2' }],
+      [{ id: 'b1' }, { id: 'b2' }]
+    ]
+    expect(bget(nestedObjects, '<')).to.deep.equal([
+      { id: 'a1' }, { id: 'a2' }, { id: 'b1' }, { id: 'b2' }
+    ])
+  })
+
+  it('works with chained operations', () => {
+    const nestedObjects = [
+      [{ id: 'a1', value: 1 }, { id: 'a2', value: 2 }],
+      [{ id: 'b1', value: 3 }, { id: 'b2', value: 4 }]
+    ]
+    expect(bget(nestedObjects, '<.id')).to.deep.equal(['a1', 'a2', 'b1', 'b2'])
+  })
+
+  it('works with complex nested structures', () => {
+    const complexNested = [
+      [[{ name: 'deep1' }], [{ name: 'deep2' }]],
+      [[{ name: 'deep3' }], [{ name: 'deep4' }]]
+    ]
+    expect(bget(complexNested, '<')).to.deep.equal([
+      [{ name: 'deep1' }], [{ name: 'deep2' }],
+      [{ name: 'deep3' }], [{ name: 'deep4' }]
+    ])
+    expect(bget(complexNested, '<.name')).to.be.undefined // This should fail as the first level is still arrays
+    expect(bget(complexNested, '<<.name')).to.deep.equal(['deep1', 'deep2', 'deep3', 'deep4'])
+  })
+})
+
+describe('Multiple fields (+)', () => {
+  it('returns multiple fields from objects', () => {
+    const obj = { name: 'John', age: 30, city: 'New York' }
+    expect(bget(obj, 'name+age')).to.deep.equal({ name: 'John', age: 30 })
+  })
+
+  it('returns multiple fields from arrays of objects', () => {
+    const people = [
+      { name: 'John', age: 30, city: 'New York' },
+      { name: 'Jane', age: 25, city: 'Boston' }
+    ]
+    expect(bget(people, 'name+age')).to.deep.equal([
+      { name: 'John', age: 30 },
+      { name: 'Jane', age: 25 }
+    ])
+  })
+
+  it('works with array indexing', () => {
+    const people = [
+      { name: 'John', age: 30, city: 'New York' },
+      { name: 'Jane', age: 25, city: 'Boston' }
+    ]
+    expect(bget(people, '[0].name+age')).to.deep.equal({ name: 'John', age: 30 })
+  })
+
+  it('works with filtering', () => {
+    const people = [
+      { name: 'John', age: 30, city: 'New York' },
+      { name: 'Jane', age: 25, city: 'Boston' }
+    ]
+    expect(bget(people, "[age > 25].name+city")).to.deep.equal([
+      { name: 'John', city: 'New York' }
+    ])
+  })
+
+  it('throws an error when a field does not exist', () => {
+    const obj = { name: 'John', age: 30 }
+    expect(bget(obj, 'name+nonexistent', 'default')).to.equal('default')
+  })
+})
