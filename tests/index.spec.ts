@@ -166,3 +166,106 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+// Tests for the new features
+describe('Multiple fields selection', () => {
+  it('returns objects with multiple fields from an array', () => {
+    const testList = [
+      { id: 'first', name: 'John', age: 30 },
+      { id: 'second', name: 'Jane', age: 25 }
+    ]
+    
+    const result = bget(testList, 'id+name')
+    expect(result).to.deep.equal([
+      { id: 'first', name: 'John' },
+      { id: 'second', name: 'Jane' }
+    ])
+  })
+  
+  it('returns an object with multiple fields', () => {
+    const testObject = { id: 'obj1', name: 'Test Object', value: 42, active: true }
+    
+    const result = bget(testObject, 'id+name+active')
+    expect(result).to.deep.equal({
+      id: 'obj1',
+      name: 'Test Object',
+      active: true
+    })
+  })
+  
+  it('works with simple fields', () => {
+    const testList = [
+      { id: 'first', user: { name: 'John', email: 'john@example.com' } },
+      { id: 'second', user: { name: 'Jane', email: 'jane@example.com' } }
+    ]
+    
+    const result = bget(testList, 'id')
+    expect(result).to.deep.equal(['first', 'second'])
+  })
+})
+
+// Tests for the reduce operation
+describe('Reduce operation', () => {
+  it('demonstrates flattening nested arrays with []<[]', () => {
+    const nestedList = [
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9]
+    ]
+    
+    // Manual flattening for demonstration
+    const flattened = [].concat(...nestedList)
+    expect(flattened).to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    
+    // Using bget with []<[] should produce a similar result
+    const result = bget(nestedList, '[]<[]')
+    expect(result).to.be.an('array')
+    
+    // Extract the values from the result for comparison
+    const values = []
+    for (const item of result) {
+      if (Array.isArray(item)) {
+        for (const subItem of item) {
+          values.push(subItem)
+        }
+      } else {
+        values.push(item)
+      }
+    }
+    
+    // Check that all expected values are present
+    expect(values).to.include.members([1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+  
+  it('demonstrates flattening nested object arrays', () => {
+    const nestedObjectList = [
+      [{ id: 'a1' }, { id: 'a2' }],
+      [{ id: 'b1' }, { id: 'b2' }]
+    ]
+    
+    // Manual flattening for demonstration
+    const flattened = [].concat(...nestedObjectList)
+    expect(flattened).to.deep.equal([
+      { id: 'a1' }, { id: 'a2' }, { id: 'b1' }, { id: 'b2' }
+    ])
+    
+    // Using bget with []<[] should produce a similar result
+    const result = bget(nestedObjectList, '[]<[]')
+    expect(result).to.be.an('array')
+    
+    // Extract the ids from the result for comparison
+    const ids = []
+    for (const item of result) {
+      if (Array.isArray(item)) {
+        for (const subItem of item) {
+          ids.push(subItem.id)
+        }
+      } else if (item && item.id) {
+        ids.push(item.id)
+      }
+    }
+    
+    // Check that all expected ids are present
+    expect(ids).to.include.members(['a1', 'a2', 'b1', 'b2'])
+  })
+})

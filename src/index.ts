@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  REDUCE: '<',
+  PLUS: '+'
 }
 
 const getToken = (path: string): string => {
@@ -24,6 +26,8 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.REDUCE:
+      return Symbols.REDUCE
     default:
       return Symbols.CHAR
   }
@@ -45,6 +49,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseObjectField(root, path)
     case Symbols.NONE:
       return root
+    case Symbols.REDUCE:
+      return parseReduce(root as Array<any>, path)
   };
 }
 
@@ -53,7 +59,7 @@ const throwUnexpectedToken = (token: string) => {
 }
 
 const throwPathDoesNotExistAt = (path: string) => {
-  throw Error(`Path "${path}" does not exist`)
+  throw Error(`Path \"${path}\" does not exist`)
 }
 
 // TODO: consider using https://github.com/mafintosh/generate-function
@@ -93,6 +99,11 @@ const parseDot = (root: Object, path: string = '') => {
 }
 
 const parseObjectField = (root: Object, path: string = '') => {
+  // Check if we're dealing with multiple fields (field1+field2)
+  if (path.includes(Symbols.PLUS)) {
+    return parseMultipleFields(root, path)
+  }
+
   const signal = (c) => getToken(c) === Symbols.CHAR
   const { scan: field, rest } = scanPathUntil(path, signal)
   let nextRoot
@@ -111,6 +122,54 @@ const parseObjectField = (root: Object, path: string = '') => {
   }
 
   return parsePath(nextRoot, rest)
+}
+
+// Implementation for getting multiple fields using + notation
+const parseMultipleFields = (root: Object, path: string = '') => {
+  // Split the path at the first dot or bracket to get the fields part
+  const nextDotIndex = path.indexOf(Symbols.DOT)
+  const nextBracketIndex = path.indexOf(Symbols.LBRACK)
+  
+  let fieldsEndIndex = path.length
+  if (nextDotIndex !== -1) {
+    fieldsEndIndex = Math.min(fieldsEndIndex, nextDotIndex)
+  }
+  if (nextBracketIndex !== -1) {
+    fieldsEndIndex = Math.min(fieldsEndIndex, nextBracketIndex)
+  }
+  
+  const fieldsString = path.substring(0, fieldsEndIndex)
+  const rest = path.substring(fieldsEndIndex)
+  
+  // Split by + to get individual fields
+  const fields = fieldsString.split(Symbols.PLUS)
+  
+  if (Array.isArray(root)) {
+    // For arrays, map each element to an object with the requested fields
+    const nextRoot = root.map(element => {
+      const result = {}
+      fields.forEach(field => {
+        if (Object.prototype.hasOwnProperty.call(element, field)) {
+          result[field] = element[field]
+        } else {
+          throwPathDoesNotExistAt(`${field} in ${path}`)
+        }
+      })
+      return result
+    })
+    return parsePath(nextRoot, rest)
+  } else {
+    // For objects, create a new object with the requested fields
+    const result = {}
+    fields.forEach(field => {
+      if (Object.prototype.hasOwnProperty.call(root, field)) {
+        result[field] = root[field]
+      } else {
+        throwPathDoesNotExistAt(`${field} in ${path}`)
+      }
+    })
+    return parsePath(result, rest)
+  }
 }
 
 const parseLBrack = <T>(root: T[], path: string) => {
@@ -143,6 +202,37 @@ const parseLBrack = <T>(root: T[], path: string) => {
 const parseRBrack = (root: Object, path: String) => {
   // slice over rbrack
   const rest = path.slice(1)
+  return parsePath(root, rest)
+}
+
+// Implementation for the reduce operation
+const parseReduce = <T>(root: T[], path: string) => {
+  // slice over reduce symbol '<'
+  const rest = path.slice(1)
+  
+  // Check if we're flattening arrays with []<[]
+  if (rest.startsWith(Symbols.LBRACK) && rest.length > 1 && rest[1] === Symbols.RBRACK) {
+    // Flatten the array
+    let flattenedArray: any[] = []
+    
+    for (const item of root) {
+      if (Array.isArray(item)) {
+        for (const subItem of item) {
+          flattenedArray.push(subItem)
+        }
+      } else {
+        flattenedArray.push(item)
+      }
+    }
+    
+    // Continue parsing with the rest of the path (after ][)
+    const remainingPath = rest.slice(2)
+    
+    return parsePath(flattenedArray, remainingPath)
+  }
+  
+  // For other reduce operations, we could implement more complex logic here
+  
   return parsePath(root, rest)
 }
 

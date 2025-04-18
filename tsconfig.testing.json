@@ -1,18 +1,16 @@
 {
   "compilerOptions": {
+    "declaration": true,
+    "declarationDir": "./dist",
     "module": "commonjs",
-    "target": "esNext",
-    "lib": ["esNext"],
-    "declaration": false,
     "noImplicitAny": false,
-    "removeComments": true,
-    "inlineSourceMap": true,
-    "moduleResolution": "node",
-    "types": [
-      "node",
-      "mocha",
-      "chai"
-    ]
+    "outDir": "./dist",
+    "target": "es2015",
+    "esModuleInterop": true
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ],
+  "exclude": ["node_modules"]
 }
