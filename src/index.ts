@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  REDUCE: '<',
+  PLUS: '+'
 }
 
 const getToken = (path: string): string => {
@@ -24,6 +26,8 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.REDUCE:
+      return Symbols.REDUCE
     default:
       return Symbols.CHAR
   }
@@ -43,6 +47,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseRBrack(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
+    case Symbols.REDUCE:
+      return parseReduce(root as Array<any>, path)
     case Symbols.NONE:
       return root
   };
@@ -93,8 +99,18 @@ const parseDot = (root: Object, path: string = '') => {
 }
 
 const parseObjectField = (root: Object, path: string = '') => {
-  const signal = (c) => getToken(c) === Symbols.CHAR
-  const { scan: field, rest } = scanPathUntil(path, signal)
+  const signal = (c) => {
+    const token = getToken(c)
+    return token === Symbols.CHAR || c.startsWith(Symbols.PLUS)
+  }
+  const { scan: fieldExpression, rest } = scanPathUntil(path, signal)
+  
+  // Check if we have multiple fields to get (using + operator)
+  if (fieldExpression.includes(Symbols.PLUS)) {
+    return parseMultipleFields(root, fieldExpression, rest)
+  }
+  
+  const field = fieldExpression
   let nextRoot
 
   if (Array.isArray(root)) {
@@ -113,6 +129,36 @@ const parseObjectField = (root: Object, path: string = '') => {
   return parsePath(nextRoot, rest)
 }
 
+// New function to handle multiple fields with + operator
+const parseMultipleFields = (root: Object, fieldExpression: string, rest: string) => {
+  const fields = fieldExpression.split(Symbols.PLUS)
+  
+  if (Array.isArray(root)) {
+    const result = root.map(element => {
+      const obj = {}
+      fields.forEach(field => {
+        if (Object.prototype.hasOwnProperty.call(element, field)) {
+          obj[field] = element[field]
+        } else {
+          throwPathDoesNotExistAt(field)
+        }
+      })
+      return obj
+    })
+    return parsePath(result, rest)
+  } else {
+    const obj = {}
+    fields.forEach(field => {
+      if (Object.prototype.hasOwnProperty.call(root, field)) {
+        obj[field] = root[field]
+      } else {
+        throwPathDoesNotExistAt(field)
+      }
+    })
+    return parsePath(obj, rest)
+  }
+}
+
 const parseLBrack = <T>(root: T[], path: string) => {
   // slice over 'lbrack'
   const restPath = path.slice(1)
@@ -128,6 +174,13 @@ const parseLBrack = <T>(root: T[], path: string) => {
       break
     }
     case Symbols.NONE: {
+      // Check if the next token after ']' is '<' (reduce operator)
+      if (rest.length > 0 && rest[1] === Symbols.REDUCE) {
+        // Handle the special case for []<[] pattern
+        const mappedResult = root.map(element => parsePath(element, rest.slice(0, 1)))
+        // After mapping, apply the reduce operation
+        return parsePath(mappedResult, rest.slice(1))
+      }
       return root.map(element => parsePath(element, rest))
     }
     default: {
@@ -143,6 +196,26 @@ const parseLBrack = <T>(root: T[], path: string) => {
 const parseRBrack = (root: Object, path: String) => {
   // slice over rbrack
   const rest = path.slice(1)
+  return parsePath(root, rest)
+}
+
+// New function to handle reduce operator '<'
+const parseReduce = <T>(root: T[], path: string) => {
+  // slice over reduce operator '<'
+  const rest = path.slice(1)
+  
+  if (Array.isArray(root)) {
+    // Flatten the array
+    const flattened = root.reduce((acc, val) => {
+      if (Array.isArray(val)) {
+        return acc.concat(val)
+      }
+      return acc.concat([val])
+    }, [])
+    
+    return parsePath(flattened, rest)
+  }
+  
   return parsePath(root, rest)
 }
 
