@@ -166,3 +166,78 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+describe('bget: reduce functionality', () => {
+  it('flattens nested arrays with < operator', () => {
+    const nestedList = [
+      [1, 2, 3],
+      [4, 5, 6]
+    ]
+    expect(bget(nestedList, '<')).to.deep.equal([1, 2, 3, 4, 5, 6])
+  })
+
+  it('flattens nested object arrays with < operator', () => {
+    const nestedObjectList = [
+      [{ id: 'a' }, { id: 'b' }],
+      [{ id: 'c' }, { id: 'd' }]
+    ]
+    expect(bget(nestedObjectList, '<')).to.deep.equal([
+      { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }
+    ])
+  })
+
+  it('can chain operations after flattening', () => {
+    const nestedObjectList = [
+      [{ id: 'a', value: 1 }, { id: 'b', value: 2 }],
+      [{ id: 'c', value: 3 }, { id: 'd', value: 4 }]
+    ]
+    expect(bget(nestedObjectList, '<.id')).to.deep.equal(['a', 'b', 'c', 'd'])
+  })
+})
+
+describe('bget: multiple fields functionality', () => {
+  it('gets multiple fields from an object with + operator', () => {
+    const testObject = {
+      id: 'test',
+      name: 'Test Object',
+      value: 42
+    }
+    expect(bget(testObject, 'id+name')).to.deep.equal({
+      id: 'test',
+      name: 'Test Object'
+    })
+  })
+
+  it('gets multiple fields from array objects with + operator', () => {
+    const testList = [
+      { id: 'a', name: 'Object A', value: 1 },
+      { id: 'b', name: 'Object B', value: 2 }
+    ]
+    expect(bget(testList, 'id+name')).to.deep.equal([
+      { id: 'a', name: 'Object A' },
+      { id: 'b', name: 'Object B' }
+    ])
+  })
+
+  it('can chain operations after getting multiple fields', () => {
+    const testObject = {
+      user: {
+        id: 'user1',
+        name: 'John Doe',
+        email: 'john@example.com'
+      }
+    }
+    expect(bget(testObject, 'user.id+name')).to.deep.equal({
+      id: 'user1',
+      name: 'John Doe'
+    })
+  })
+
+  it('throws an error when one of the fields does not exist', () => {
+    const testObject = {
+      id: 'test',
+      name: 'Test Object'
+    }
+    expect(bget(testObject, 'id+nonexistent', 'fallback')).to.equal('fallback')
+  })
+})
