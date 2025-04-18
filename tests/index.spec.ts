@@ -166,3 +166,76 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+describe('bget: reduce operator', () => {
+  it('flattens nested arrays with the reduce operator', () => {
+    const nestedLists = [
+      [1, 2, 3],
+      [4, 5, 6]
+    ]
+    expect(bget(nestedLists, '<')).to.deep.equal([1, 2, 3, 4, 5, 6])
+  })
+
+  it('flattens nested object arrays with the reduce operator', () => {
+    const nestedLists = [
+      [{ id: 'a' }, { id: 'b' }],
+      [{ id: 'c' }, { id: 'd' }]
+    ]
+    expect(bget(nestedLists, '<')).to.deep.equal([
+      { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }
+    ])
+  })
+
+  it('allows chaining after reduce operator', () => {
+    const nestedLists = [
+      [{ id: 'a' }, { id: 'b' }],
+      [{ id: 'c' }, { id: 'd' }]
+    ]
+    expect(bget(nestedLists, '<.id')).to.deep.equal(['a', 'b', 'c', 'd'])
+  })
+
+  it('works with the example from the README', () => {
+    const nestedLists = [
+      [{ name: 'tiger' }, { name: 'lion' }],
+      [{ name: 'wolf' }, { name: 'dog' }]
+    ]
+    expect(bget(nestedLists, '<.name')).to.deep.equal(['tiger', 'lion', 'wolf', 'dog'])
+  })
+})
+
+describe('bget: multiple fields', () => {
+  it('gets multiple fields from an object', () => {
+    const obj = { name: 'John', age: 30, city: 'New York' }
+    expect(bget(obj, 'name+age')).to.deep.equal({ name: 'John', age: 30 })
+  })
+
+  it('gets multiple fields from objects in an array', () => {
+    const users = [
+      { id: 1, name: 'John', age: 30, city: 'New York' },
+      { id: 2, name: 'Jane', age: 25, city: 'Boston' }
+    ]
+    expect(bget(users, 'name+age')).to.deep.equal([
+      { name: 'John', age: 30 },
+      { name: 'Jane', age: 25 }
+    ])
+  })
+
+  it('allows chaining after multiple fields', () => {
+    const company = {
+      info: {
+        name: 'Acme Corp',
+        founded: 1999,
+        location: 'San Francisco'
+      }
+    }
+    expect(bget(company, 'info.name+founded')).to.deep.equal({
+      name: 'Acme Corp',
+      founded: 1999
+    })
+  })
+
+  it('throws an error when a field does not exist', () => {
+    const obj = { name: 'John', age: 30 }
+    expect(bget(obj, 'name+nonexistent', 'default')).to.equal('default')
+  })
+})
