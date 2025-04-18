@@ -25,19 +25,46 @@ let nestedLists = [[{name: 'tiger'}, {name: 'lion'}], [{name: 'wolf'}, {name: 'd
 bget(nestedLists, '[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 ```
 
-### proposals
-
-#### reduce ('<')
-```js
-bget(foo, '[]<[]') // flattens out the nests lists into single list
-```
-
-#### get multiple fields
+## Reduce Operation (`<`)
+The reduce operation flattens nested arrays into a single array.
 
 ```js
-bget(foo, '[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
+let nestedArrays = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+bget(nestedArrays, '<') // -> [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+let nestedObjects = [
+  [{ id: 'a1' }, { id: 'a2' }],
+  [{ id: 'b1' }, { id: 'b2' }]
+]
+bget(nestedObjects, '<') // -> [{ id: 'a1' }, { id: 'a2' }, { id: 'b1' }, { id: 'b2' }]
+
+// Works with chained operations
+bget(nestedObjects, '<.id') // -> ['a1', 'a2', 'b1', 'b2']
+
+// Multiple levels of nesting can be flattened with multiple reduce operations
+let deeplyNested = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+bget(deeplyNested, '<<') // -> [1, 2, 3, 4, 5, 6, 7, 8]
 ```
 
+## Multiple Fields (`+`)
+The plus operator allows you to retrieve multiple fields from objects.
+
+```js
+let person = { name: 'John', age: 30, city: 'New York' }
+bget(person, 'name+age') // -> { name: 'John', age: 30 }
+
+let people = [
+  { name: 'John', age: 30, city: 'New York' },
+  { name: 'Jane', age: 25, city: 'Boston' }
+]
+bget(people, 'name+city') // -> [{ name: 'John', city: 'New York' }, { name: 'Jane', city: 'Boston' }]
+
+// Works with array indexing
+bget(people, '[0].name+age') // -> { name: 'John', age: 30 }
+
+// Works with filtering
+bget(people, "[age > 25].name+city") // -> [{ name: 'John', city: 'New York' }]
+```
 
 # Contributing
 
@@ -49,5 +76,3 @@ bget(foo, '[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsO
 - `yarn lint` - Run ESlint with airbnb-config
 - `yarn cover` - Get coverage report for your code.
 - `yarn build` - Babel will transpile ES6 => ES5 and minify the code.
-
-
