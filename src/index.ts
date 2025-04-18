@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  REDUCE: '<',
+  PLUS: '+'
 }
 
 const getToken = (path: string): string => {
@@ -24,14 +26,14 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.REDUCE:
+      return Symbols.REDUCE
     default:
       return Symbols.CHAR
   }
 }
 
-// Parse from top of abstract syntax tree
 const parsePath = (root: Object, path: string = '') => {
-  // base cases
   const token = getToken(path)
 
   switch (token) {
@@ -43,9 +45,11 @@ const parsePath = (root: Object, path: string = '') => {
       return parseRBrack(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
+    case Symbols.REDUCE:
+      return parseReduce(root, path)
     case Symbols.NONE:
       return root
-  };
+  }
 }
 
 const throwUnexpectedToken = (token: string) => {
@@ -56,12 +60,9 @@ const throwPathDoesNotExistAt = (path: string) => {
   throw Error(`Path "${path}" does not exist`)
 }
 
-// TODO: consider using https://github.com/mafintosh/generate-function
 function evalInScope<T>(expression: String, context: T) {
   const body: string = `return ${expression};`
-  /* eslint-disable no-new-func */
   return (new Function(...Object.keys(context), body))(...Object.values(context))
-  /* eslint-enable no-new-func */
 }
 
 type SignalFn = (character: string) => Boolean;
@@ -79,7 +80,6 @@ const scanPathUntil = (path: string, signal: SignalFn) => {
 }
 
 const parseDot = (root: Object, path: string = '') => {
-  // slice over 'dot'
   const rest = path.slice(1)
   const token = getToken(rest)
   switch (token) {
@@ -93,8 +93,16 @@ const parseDot = (root: Object, path: string = '') => {
 }
 
 const parseObjectField = (root: Object, path: string = '') => {
-  const signal = (c) => getToken(c) === Symbols.CHAR
+  const signal = (c) => {
+    const token = getToken(c)
+    return token === Symbols.CHAR || token === Symbols.PLUS
+  }
   const { scan: field, rest } = scanPathUntil(path, signal)
+
+  if (field.includes(Symbols.PLUS)) {
+    return parseMultipleFields(root, field, rest)
+  }
+
   let nextRoot
 
   if (Array.isArray(root)) {
@@ -113,8 +121,35 @@ const parseObjectField = (root: Object, path: string = '') => {
   return parsePath(nextRoot, rest)
 }
 
+const parseMultipleFields = (root: Object, fieldPath: string, rest: string) => {
+  const fields = fieldPath.split(Symbols.PLUS)
+
+  if (Array.isArray(root)) {
+    return root.map(element => {
+      const result = {}
+      fields.forEach(field => {
+        if (Object.prototype.hasOwnProperty.call(element, field)) {
+          result[field] = element[field]
+        } else {
+          throwPathDoesNotExistAt(fieldPath)
+        }
+      })
+      return result
+    })
+  } else {
+    const result = {}
+    fields.forEach(field => {
+      if (Object.prototype.hasOwnProperty.call(root, field)) {
+        result[field] = root[field]
+      } else {
+        throwPathDoesNotExistAt(fieldPath)
+      }
+    })
+    return parsePath(result, rest)
+  }
+}
+
 const parseLBrack = <T>(root: T[], path: string) => {
-  // slice over 'lbrack'
   const restPath = path.slice(1)
   const signal = (c) => getToken(c) !== Symbols.RBRACK
   const { scan: subPath, rest } = scanPathUntil(restPath, signal)
@@ -136,14 +171,34 @@ const parseLBrack = <T>(root: T[], path: string) => {
       break
     }
   }
-  //  returns next root
   return parsePath(nextRoot, rest)
 }
 
 const parseRBrack = (root: Object, path: String) => {
-  // slice over rbrack
   const rest = path.slice(1)
   return parsePath(root, rest)
+}
+
+const parseReduce = (root: Object, path: string) => {
+  const rest = path.slice(1)
+  
+  if (!Array.isArray(root)) {
+    throwUnexpectedToken('Reduce operation can only be applied to arrays')
+  }
+  
+  if (rest.startsWith('[]')) {
+    const flattened = (root as any[]).reduce((acc, val) => {
+      if (Array.isArray(val)) {
+        return acc.concat(val)
+      }
+      acc.push(val)
+      return acc
+    }, [])
+    
+    return parsePath(flattened, rest.slice(2))
+  }
+  
+  throwUnexpectedToken(`Unsupported reduce operation: ${rest}`)
 }
 
 const applyExpression = <T>(array: T[], expression: string): any => {
