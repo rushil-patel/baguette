@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  REDUCE: '<',
+  PLUS: '+'
 }
 
 const getToken = (path: string): string => {
@@ -24,14 +26,14 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.REDUCE:
+      return Symbols.REDUCE
     default:
       return Symbols.CHAR
   }
 }
 
-// Parse from top of abstract syntax tree
 const parsePath = (root: Object, path: string = '') => {
-  // base cases
   const token = getToken(path)
 
   switch (token) {
@@ -43,6 +45,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseRBrack(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
+    case Symbols.REDUCE:
+      return parseReduce(root as Array<any>, path)
     case Symbols.NONE:
       return root
   };
@@ -53,10 +57,9 @@ const throwUnexpectedToken = (token: string) => {
 }
 
 const throwPathDoesNotExistAt = (path: string) => {
-  throw Error(`Path "${path}" does not exist`)
+  throw Error(`Path \"${path}\" does not exist`)
 }
 
-// TODO: consider using https://github.com/mafintosh/generate-function
 function evalInScope<T>(expression: String, context: T) {
   const body: string = `return ${expression};`
   /* eslint-disable no-new-func */
@@ -79,7 +82,6 @@ const scanPathUntil = (path: string, signal: SignalFn) => {
 }
 
 const parseDot = (root: Object, path: string = '') => {
-  // slice over 'dot'
   const rest = path.slice(1)
   const token = getToken(rest)
   switch (token) {
@@ -92,29 +94,80 @@ const parseDot = (root: Object, path: string = '') => {
   }
 }
 
+const parseReduce = <T>(root: T[], path: string = '') => {
+  const rest = path.slice(1)
+  
+  if (!root.length) {
+    return []
+  }
+  
+  if (getToken(rest) === Symbols.LBRACK) {
+    const flattened = root.reduce((acc: any[], val: any) => {
+      if (Array.isArray(val)) {
+        return acc.concat(val)
+      }
+      return acc.concat([val])
+    }, [])
+    
+    return parsePath(flattened, rest)
+  }
+  
+  return parsePath(root, rest)
+}
+
 const parseObjectField = (root: Object, path: string = '') => {
-  const signal = (c) => getToken(c) === Symbols.CHAR
+  const signal = (c) => {
+    const token = getToken(c)
+    return token === Symbols.CHAR || (c.indexOf(Symbols.PLUS) > 0 && token === Symbols.CHAR)
+  }
   const { scan: field, rest } = scanPathUntil(path, signal)
   let nextRoot
 
-  if (Array.isArray(root)) {
-    nextRoot = root.map(element => {
-      if (Object.prototype.hasOwnProperty.call(element, field)) {
-        return element[field]
-      }
-      throwPathDoesNotExistAt(path)
-    })
-  } else if (Object.prototype.hasOwnProperty.call(root, field)) {
-    nextRoot = root[field]
+  if (field.includes(Symbols.PLUS)) {
+    const fields = field.split(Symbols.PLUS)
+    
+    if (Array.isArray(root)) {
+      nextRoot = root.map(element => {
+        const result = {}
+        fields.forEach(f => {
+          if (Object.prototype.hasOwnProperty.call(element, f)) {
+            result[f] = element[f]
+          } else {
+            throwPathDoesNotExistAt(`${field} (field: ${f})`)
+          }
+        })
+        return result
+      })
+    } else {
+      const result = {}
+      fields.forEach(f => {
+        if (Object.prototype.hasOwnProperty.call(root, f)) {
+          result[f] = root[f]
+        } else {
+          throwPathDoesNotExistAt(`${field} (field: ${f})`)
+        }
+      })
+      nextRoot = result
+    }
   } else {
-    throwPathDoesNotExistAt(path)
+    if (Array.isArray(root)) {
+      nextRoot = root.map(element => {
+        if (Object.prototype.hasOwnProperty.call(element, field)) {
+          return element[field]
+        }
+        throwPathDoesNotExistAt(path)
+      })
+    } else if (Object.prototype.hasOwnProperty.call(root, field)) {
+      nextRoot = root[field]
+    } else {
+      throwPathDoesNotExistAt(path)
+    }
   }
 
   return parsePath(nextRoot, rest)
 }
 
 const parseLBrack = <T>(root: T[], path: string) => {
-  // slice over 'lbrack'
   const restPath = path.slice(1)
   const signal = (c) => getToken(c) !== Symbols.RBRACK
   const { scan: subPath, rest } = scanPathUntil(restPath, signal)
@@ -136,12 +189,10 @@ const parseLBrack = <T>(root: T[], path: string) => {
       break
     }
   }
-  //  returns next root
   return parsePath(nextRoot, rest)
 }
 
 const parseRBrack = (root: Object, path: String) => {
-  // slice over rbrack
   const rest = path.slice(1)
   return parsePath(root, rest)
 }
