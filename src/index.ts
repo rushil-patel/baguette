@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  REDUCE: '<',
+  PLUS: '+'
 }
 
 const getToken = (path: string): string => {
@@ -24,6 +26,8 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.REDUCE:
+      return Symbols.REDUCE
     default:
       return Symbols.CHAR
   }
@@ -43,6 +47,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseRBrack(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
+    case Symbols.REDUCE:
+      return parseReduce(root as Array<any>, path)
     case Symbols.NONE:
       return root
   };
@@ -93,8 +99,17 @@ const parseDot = (root: Object, path: string = '') => {
 }
 
 const parseObjectField = (root: Object, path: string = '') => {
-  const signal = (c) => getToken(c) === Symbols.CHAR
+  const signal = (c) => {
+    const token = getToken(c)
+    return token === Symbols.CHAR || c.startsWith(Symbols.PLUS)
+  }
   const { scan: field, rest } = scanPathUntil(path, signal)
+  
+  // Check if we have multiple fields to get (using +)
+  if (field.includes(Symbols.PLUS)) {
+    return parseMultipleFields(root, field, rest)
+  }
+  
   let nextRoot
 
   if (Array.isArray(root)) {
@@ -111,6 +126,34 @@ const parseObjectField = (root: Object, path: string = '') => {
   }
 
   return parsePath(nextRoot, rest)
+}
+
+const parseMultipleFields = (root: Object, fieldPath: string, rest: string) => {
+  const fields = fieldPath.split(Symbols.PLUS)
+  
+  if (Array.isArray(root)) {
+    return root.map(element => {
+      const result = {}
+      fields.forEach(field => {
+        if (Object.prototype.hasOwnProperty.call(element, field)) {
+          result[field] = element[field]
+        } else {
+          throwPathDoesNotExistAt(fieldPath)
+        }
+      })
+      return result
+    })
+  } else {
+    const result = {}
+    fields.forEach(field => {
+      if (Object.prototype.hasOwnProperty.call(root, field)) {
+        result[field] = root[field]
+      } else {
+        throwPathDoesNotExistAt(fieldPath)
+      }
+    })
+    return parsePath(result, rest)
+  }
 }
 
 const parseLBrack = <T>(root: T[], path: string) => {
@@ -144,6 +187,16 @@ const parseRBrack = (root: Object, path: String) => {
   // slice over rbrack
   const rest = path.slice(1)
   return parsePath(root, rest)
+}
+
+const parseReduce = <T>(root: T[][], path: string) => {
+  // slice over reduce symbol '<'
+  const rest = path.slice(1)
+  
+  // Flatten the array
+  const flattened = root.reduce((acc, val) => acc.concat(val), [])
+  
+  return parsePath(flattened, rest)
 }
 
 const applyExpression = <T>(array: T[], expression: string): any => {
