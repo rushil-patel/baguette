@@ -25,19 +25,51 @@ let nestedLists = [[{name: 'tiger'}, {name: 'lion'}], [{name: 'wolf'}, {name: 'd
 bget(nestedLists, '[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 ```
 
-### proposals
-
-#### reduce ('<')
-```js
-bget(foo, '[]<[]') // flattens out the nests lists into single list
-```
-
-#### get multiple fields
+## Reduce Operation ('<')
+Flattens nested arrays into a single array.
 
 ```js
-bget(foo, '[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
+import {bget} from 'baguette';
+
+// Flatten nested arrays
+let nestedArrays = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+bget(nestedArrays, '<[]') // -> [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+// Flatten nested object arrays
+let nestedObjectArrays = [
+  [{ id: 'a1' }, { id: 'a2' }],
+  [{ id: 'b1' }, { id: 'b2' }]
+]
+bget(nestedObjectArrays, '<[]') // -> [{ id: 'a1' }, { id: 'a2' }, { id: 'b1' }, { id: 'b2' }]
+
+// Chain with other operations
+bget(nestedObjectArrays, '<[].id') // -> ['a1', 'a2', 'b1', 'b2']
 ```
 
+## Multiple Fields ('+')
+Returns a mapping of items with multiple fields.
+
+```js
+import {bget} from 'baguette';
+
+// Get multiple fields from an object
+let user = { id: '123', name: 'John', age: 30, email: 'john@example.com' }
+bget(user, 'id+name') // -> { id: '123', name: 'John' }
+
+// Get multiple fields from an array of objects
+let users = [
+  { id: '1', name: 'John', age: 30 },
+  { id: '2', name: 'Jane', age: 25 }
+]
+bget(users, 'id+name') // -> [{ id: '1', name: 'John' }, { id: '2', name: 'Jane' }]
+
+// Chain with array operations
+let usersWithAddresses = [
+  { id: '1', name: 'John', address: { city: 'New York', zip: '10001' } },
+  { id: '2', name: 'Jane', address: { city: 'Boston', zip: '02108' } }
+]
+bget(usersWithAddresses, '[].address.city+zip') // -> [{ city: 'New York', zip: '10001' }, { city: 'Boston', zip: '02108' }]
+```
 
 # Contributing
 
@@ -49,5 +81,3 @@ bget(foo, '[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsO
 - `yarn lint` - Run ESlint with airbnb-config
 - `yarn cover` - Get coverage report for your code.
 - `yarn build` - Babel will transpile ES6 => ES5 and minify the code.
-
-
