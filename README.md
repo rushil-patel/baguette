@@ -25,19 +25,46 @@ let nestedLists = [[{name: 'tiger'}, {name: 'lion'}], [{name: 'wolf'}, {name: 'd
 bget(nestedLists, '[][].name') // -> [['tiger', lion'], ['wolf', 'dog']]
 ```
 
-### proposals
-
-#### reduce ('<')
-```js
-bget(foo, '[]<[]') // flattens out the nests lists into single list
-```
-
-#### get multiple fields
+## Reduce Operation ('<')
+The reduce operation flattens nested arrays into a single array.
 
 ```js
-bget(foo, '[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsOne and fieldsTwo
+let nestedArrays = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+bget(nestedArrays, '<') // -> [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+let nestedObjectArrays = [
+  [{id: 'a1'}, {id: 'a2'}],
+  [{id: 'b1'}, {id: 'b2'}]
+]
+bget(nestedObjectArrays, '<') // -> [{id: 'a1'}, {id: 'a2'}, {id: 'b1'}, {id: 'b2'}]
+
+// Can be chained with other operations
+bget(nestedObjectArrays, '<.id') // -> ['a1', 'a2', 'b1', 'b2']
 ```
 
+## Multiple Field Selection ('+')
+The multiple field selection operator allows you to select multiple fields from objects.
+
+```js
+// For a single object
+let user = { id: '123', name: 'John', age: 30, city: 'New York' }
+bget(user, 'id+name') // -> { id: '123', name: 'John' }
+
+// For an array of objects
+let users = [
+  { id: '1', name: 'John', age: 30 },
+  { id: '2', name: 'Jane', age: 25 }
+]
+bget(users, '[].id+name') // -> [{ id: '1', name: 'John' }, { id: '2', name: 'Jane' }]
+
+// Can be combined with filtering
+let activeUsers = [
+  { id: '1', name: 'John', age: 30, active: true },
+  { id: '2', name: 'Jane', age: 25, active: false },
+  { id: '3', name: 'Bob', age: 40, active: true }
+]
+bget(activeUsers, "[active === true].id+name") // -> [{ id: '1', name: 'John' }, { id: '3', name: 'Bob' }]
+```
 
 # Contributing
 
@@ -49,5 +76,3 @@ bget(foo, '[].fieldOne+fieldTwo') // returns a mapping of items with the fieldsO
 - `yarn lint` - Run ESlint with airbnb-config
 - `yarn cover` - Get coverage report for your code.
 - `yarn build` - Babel will transpile ES6 => ES5 and minify the code.
-
-

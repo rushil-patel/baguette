@@ -166,3 +166,63 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+describe('Reduce operation', () => {
+  it('flattens nested arrays with < operator', () => {
+    const nestedArrays = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    expect(bget(nestedArrays, '<')).to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+
+  it('flattens nested object arrays with < operator', () => {
+    const nestedObjectArrays = [
+      [{ id: 'a1' }, { id: 'a2' }],
+      [{ id: 'b1' }, { id: 'b2' }]
+    ]
+    expect(bget(nestedObjectArrays, '<')).to.deep.equal([
+      { id: 'a1' }, { id: 'a2' }, { id: 'b1' }, { id: 'b2' }
+    ])
+  })
+
+  it('can be chained with other operations', () => {
+    const nestedObjectArrays = [
+      [{ id: 'a1', value: 10 }, { id: 'a2', value: 20 }],
+      [{ id: 'b1', value: 30 }, { id: 'b2', value: 40 }]
+    ]
+    expect(bget(nestedObjectArrays, '<.id')).to.deep.equal(['a1', 'a2', 'b1', 'b2'])
+  })
+})
+
+describe('Multiple fields selection', () => {
+  it('selects multiple fields from an object', () => {
+    const obj = { id: '123', name: 'John', age: 30, city: 'New York' }
+    expect(bget(obj, 'id+name')).to.deep.equal({ id: '123', name: 'John' })
+  })
+
+  it('selects multiple fields from an array of objects', () => {
+    const arr = [
+      { id: '1', name: 'John', age: 30 },
+      { id: '2', name: 'Jane', age: 25 }
+    ]
+    expect(bget(arr, '[].id+name')).to.deep.equal([
+      { id: '1', name: 'John' },
+      { id: '2', name: 'Jane' }
+    ])
+  })
+
+  it('throws an error when a field does not exist', () => {
+    const obj = { id: '123', name: 'John' }
+    expect(bget(obj, 'id+nonexistent', 'default')).to.equal('default')
+  })
+
+  it('can be chained with other operations', () => {
+    const arr = [
+      { id: '1', name: 'John', age: 30, active: true },
+      { id: '2', name: 'Jane', age: 25, active: false },
+      { id: '3', name: 'Bob', age: 40, active: true }
+    ]
+    expect(bget(arr, "[active === true].id+name")).to.deep.equal([
+      { id: '1', name: 'John' },
+      { id: '3', name: 'Bob' }
+    ])
+  })
+})
