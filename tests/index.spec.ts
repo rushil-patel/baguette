@@ -166,3 +166,78 @@ describe('bget: invalid paths', () => {
     })
   })
 })
+
+// New tests for the reduce operator
+describe('Reduce operator', () => {
+  it('flattens nested arrays with the < operator', () => {
+    const nestedList = [[1, 2], [3, 4], [5, 6]]
+    expect(bget(nestedList, '<')).to.deep.equal([1, 2, 3, 4, 5, 6])
+  })
+
+  it('flattens nested arrays with objects', () => {
+    const nestedList = [
+      [{ id: 'a' }, { id: 'b' }],
+      [{ id: 'c' }, { id: 'd' }]
+    ]
+    expect(bget(nestedList, '<')).to.deep.equal([
+      { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }
+    ])
+  })
+
+  it('can be chained with other operations', () => {
+    const nestedList = [
+      [{ id: 'a', value: 1 }, { id: 'b', value: 2 }],
+      [{ id: 'c', value: 3 }, { id: 'd', value: 4 }]
+    ]
+    expect(bget(nestedList, '<.id')).to.deep.equal(['a', 'b', 'c', 'd'])
+  })
+
+  it('works with the example from the README', () => {
+    const nestedLists = [[{ name: 'tiger' }, { name: 'lion' }], [{ name: 'wolf' }, { name: 'dog' }]]
+    const result = bget(nestedLists, '[]<[]')
+    expect(result).to.deep.equal([
+      { name: 'tiger' }, { name: 'lion' }, { name: 'wolf' }, { name: 'dog' }
+    ])
+  })
+})
+
+// New tests for the multiple fields operator
+describe('Multiple fields operator', () => {
+  it('gets multiple fields from an object with the + operator', () => {
+    const obj = { id: '123', name: 'John', age: 30 }
+    expect(bget(obj, 'id+name')).to.deep.equal({ id: '123', name: 'John' })
+  })
+
+  it('gets multiple fields from objects in an array', () => {
+    const list = [
+      { id: '1', name: 'John', age: 30 },
+      { id: '2', name: 'Jane', age: 25 }
+    ]
+    expect(bget(list, 'id+name')).to.deep.equal([
+      { id: '1', name: 'John' },
+      { id: '2', name: 'Jane' }
+    ])
+  })
+
+  it('can be chained with other operations', () => {
+    const list = [
+      { id: '1', user: { name: 'John', email: 'john@example.com' } },
+      { id: '2', user: { name: 'Jane', email: 'jane@example.com' } }
+    ]
+    expect(bget(list, 'user.name+email')).to.deep.equal([
+      { name: 'John', email: 'john@example.com' },
+      { name: 'Jane', email: 'jane@example.com' }
+    ])
+  })
+
+  it('works with the example from the README', () => {
+    const foo = [
+      { fieldOne: 'value1', fieldTwo: 'value2', extra: 'extra1' },
+      { fieldOne: 'value3', fieldTwo: 'value4', extra: 'extra2' }
+    ]
+    expect(bget(foo, '[].fieldOne+fieldTwo')).to.deep.equal([
+      { fieldOne: 'value1', fieldTwo: 'value2' },
+      { fieldOne: 'value3', fieldTwo: 'value4' }
+    ])
+  })
+})
