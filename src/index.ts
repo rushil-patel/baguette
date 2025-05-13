@@ -31,20 +31,57 @@ const getToken = (path: string): string => {
 
 // Parse from top of abstract syntax tree
 const parsePath = (root: Object, path: string = '') => {
-  // base cases
-  const token = getToken(path)
+  // If flatten operator present in path (e.g., '[]<[]'), split and apply recursively
+  const flattenIdx = path.indexOf('<');
+  if (flattenIdx !== -1) {
+    const beforeFlatten = path.slice(0, flattenIdx);
+    const afterFlatten = path.slice(flattenIdx + 1);
+    // Parse the left, flatten its result, continue parsing right
+    const leftResult = parsePath(root, beforeFlatten);
+    // If flattening nested arrays, flatten all levels
+    const flattened = flattenDeep(leftResult, 10); // arbitrary deep flatten
+    return parsePath(flattened, afterFlatten);
+  }
+
+  // If projection operator present (only valid with arrays, e.g. '[].foo+bar')
+  // Only check before next . or [] or end of string
+  let projectMatch = path.match(/\[\](?:\.|\w)*\.[^.<\[]*\+/);
+  // fallback to a more controlled detection below
+  if (path.includes('+')) {
+    // find segment like 'foo+bar', parse it out
+    const dotIdx = path.indexOf('.');
+    const startIdx = dotIdx !== -1 ? dotIdx+1 : 0;
+    let projPart = path.slice(startIdx);
+    // end at next '.' or '[' or '<' or end
+    const nextOp = projPart.search(/[.<\[]/);
+    let projFields = nextOp !== -1 ? projPart.slice(0, nextOp) : projPart;
+    if (projFields.includes('+')) {
+      const beforeProj = path.slice(0, startIdx) + projFields;
+      const afterProj = path.slice(startIdx + projFields.length);
+      // fields separated by '+'
+      const fields = projFields.split('+').map(s => s.trim());
+      // parse base, apply projection
+      const arr = parsePath(root, path.slice(0, startIdx - 1)); // up to the [].
+      // project fields from objects in array
+      const projected = Array.isArray(arr) ? arr.map(obj => pickFields(obj, fields)) : arr;
+      return parsePath(projected, afterProj);
+    }
+  }
+
+  // fallback to original implementation
+  const token = getToken(path);
 
   switch (token) {
     case Symbols.DOT:
-      return parseDot(root, path)
+      return parseDot(root, path);
     case Symbols.LBRACK:
-      return parseLBrack(root as Array<any>, path)
+      return parseLBrack(root as Array<any>, path);
     case Symbols.RBRACK:
-      return parseRBrack(root, path)
+      return parseRBrack(root, path);
     case Symbols.CHAR:
-      return parseObjectField(root, path)
+      return parseObjectField(root, path);
     case Symbols.NONE:
-      return root
+      return root;
   };
 }
 
@@ -150,6 +187,26 @@ const applyExpression = <T>(array: T[], expression: string): any => {
   return array.filter((element: T) => {
     return evalInScope(expression, element)
   })
+}
+
+// Utility to flatten arbitrarily nested arrays to a specified depth
+function flattenDeep(arr: any[], depth = 1): any[] {
+  let result = arr;
+  for (let d = 0; d < depth; d++) {
+    result = [].concat(...result);
+    if (!result.some(Array.isArray)) break;
+  }
+  return result;
+}
+
+function pickFields(obj: object, fields: string[]): object {
+  const out: any = {};
+  for (const key of fields) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      out[key] = obj[key];
+    }
+  }
+  return out;
 }
 
 export const bget = (root: Object, path: string | String = '', fallback?: any): any => {
