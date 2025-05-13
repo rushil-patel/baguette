@@ -146,6 +146,50 @@ describe('Nth degree', () => {
   })
 })
 
+describe('bget: flatten and projection/advanced operators', () => {
+  it('flattens a nested array using []<[]', () => {
+    const nested = [[{ name: 'tiger' }, { name: 'lion' }], [{ name: 'wolf' }, { name: 'dog' }]];
+    // flatten to single level of objects
+    expect(bget(nested, '[]<[]')).to.deep.equal([{ name: 'tiger' }, { name: 'lion' }, { name: 'wolf' }, { name: 'dog' }]);
+  });
+  it('returns property from objects in flattened array ([]<[].name)', () => {
+    const nested = [[{ name: 'tiger' }, { name: 'lion' }], [{ name: 'wolf' }, { name: 'dog' }]];
+    expect(bget(nested, '[]<[].name')).to.deep.equal(['tiger', 'lion', 'wolf', 'dog']);
+  });
+  it('projects multiple fields using + operator ([].foo+bar)', () => {
+    const list = [
+      { foo: 1, bar: 2, ignore: true },
+      { foo: 3, bar: 4, ignore: false },
+    ];
+    expect(bget(list, '[].foo+bar')).to.deep.equal([
+      { foo: 1, bar: 2 },
+      { foo: 3, bar: 4 },
+    ]);
+  });
+  it('projects multiple fields from a nested list ([][]<[].foo+bar)', () => {
+    const nested = [
+      [ { foo: 1, bar: 2, extra: 9 } ],
+      [ { foo: 5, bar: 6, extra: 10 } ],
+    ];
+    expect(bget(nested, '[]<[].foo+bar')).to.deep.equal([
+      { foo: 1, bar: 2 },
+      { foo: 5, bar: 6 },
+    ]);
+  });
+  it('returns correct values when operator chains follow another operator', () => {
+    const nested = [
+      [{ a: 1, b: 9 }, { a: 2 }],
+      [{ a: 3, b: 4 }]
+    ];
+    expect(bget(nested, '[]<[].a')).to.deep.equal([1, 2, 3]);
+    expect(bget(nested, '[]<[].a+b')).to.deep.equal([
+      { a: 1, b: 9 },
+      { a: 2 },
+      { a: 3, b: 4 }
+    ]);
+  });
+});
+
 describe('bget: invalid paths', () => {
   describe('on objects', () => {
 
