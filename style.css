@@ -1,0 +1,59 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+#app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.search-container {
+    margin-bottom: 20px;
+}
+
+#search-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.container {
+    display: flex;
+    gap: 20px;
+}
+
+.shop-list {
+    width: 40%;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.shop-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.shop-item:last-child {
+    border-bottom: none;
+}
+
+.map-container {
+    width: 60%;
+    height: 500px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
