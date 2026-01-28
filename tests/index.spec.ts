@@ -144,6 +144,53 @@ describe('Nth degree', () => {
     expect(bget(testList, '[][].id'))
       .to.deep.equal([['primary.first', 'primary.second'], ['secondary.first', 'secondary.second']])
   })
+
+  it('allows flattening of nested lists using the < operator', () => {
+    const nestedLists = [[{ name: 'tiger' }, { name: 'lion' }], [{ name: 'wolf' }, { name: 'dog' }]]
+    expect(bget(nestedLists, '[]<[]')).to.deep.equal([{ name: 'tiger' }, { name: 'lion' }, { name: 'wolf' }, { name: 'dog' }])
+    expect(bget(nestedLists, '[]<[].name')).to.deep.equal(['tiger', 'lion', 'wolf', 'dog'])
+  })
+
+  it('allows multi-field selection using the + operator', () => {
+    const testObject = { id: '0', name: 'tiger', age: 5 }
+    expect(bget(testObject, 'id+name')).to.deep.equal({ id: '0', name: 'tiger' })
+
+    const testList = [
+      { id: '0', name: 'tiger', age: 5 },
+      { id: '1', name: 'lion', age: 3 }
+    ]
+    expect(bget(testList, '[].id+name')).to.deep.equal([
+      { id: '0', name: 'tiger' },
+      { id: '1', name: 'lion' }
+    ])
+  })
+
+  it('allows multi-field selection directly on an array', () => {
+    const testList = [
+      { id: '0', name: 'tiger' },
+      { id: '1', name: 'lion' }
+    ]
+    expect(bget(testList, 'id+name')).to.deep.equal([
+      { id: '0', name: 'tiger' },
+      { id: '1', name: 'lion' }
+    ])
+  })
+
+  it('allows using the < operator directly', () => {
+    expect(bget([[1], [2]], '<')).to.deep.equal([1, 2])
+    expect(bget([1, 2], '<')).to.deep.equal([1, 2])
+    expect(bget({ id: 1 }, '<')).to.deep.equal({ id: 1 })
+  })
+
+  it('handles missing fields gracefully by returning fallback', () => {
+    const testObject = { id: '0' }
+    expect(bget(testObject, 'nonexistent', 'fallback')).to.equal('fallback')
+    expect(bget(testObject, 'id+nonexistent', 'fallback')).to.equal('fallback')
+
+    const testList = [{ id: '0' }]
+    expect(bget(testList, 'nonexistent', 'fallback')).to.equal('fallback')
+    expect(bget(testList, 'id+nonexistent', 'fallback')).to.equal('fallback')
+  })
 })
 
 describe('bget: invalid paths', () => {
