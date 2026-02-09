@@ -5,7 +5,9 @@ const Symbols = {
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
-  INTEGER: 'INTEGER'
+  INTEGER: 'INTEGER',
+  PLUS: '+',
+  REDUCE: '<'
 }
 
 const getToken = (path: string): string => {
@@ -24,6 +26,10 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.PLUS:
+      return Symbols.PLUS
+    case Symbols.REDUCE:
+      return Symbols.REDUCE
     default:
       return Symbols.CHAR
   }
@@ -43,6 +49,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseRBrack(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
+    case Symbols.REDUCE:
+      return parsePath(root, path.slice(1))
     case Symbols.NONE:
       return root
   };
@@ -93,21 +101,43 @@ const parseDot = (root: Object, path: string = '') => {
 }
 
 const parseObjectField = (root: Object, path: string = '') => {
-  const signal = (c) => getToken(c) === Symbols.CHAR
-  const { scan: field, rest } = scanPathUntil(path, signal)
+  const signal = (c) => getToken(c) === Symbols.CHAR || getToken(c) === Symbols.PLUS
+  const { scan: fieldExpr, rest } = scanPathUntil(path, signal)
   let nextRoot
 
-  if (Array.isArray(root)) {
-    nextRoot = root.map(element => {
-      if (Object.prototype.hasOwnProperty.call(element, field)) {
-        return element[field]
-      }
-      throwPathDoesNotExistAt(path)
-    })
-  } else if (Object.prototype.hasOwnProperty.call(root, field)) {
-    nextRoot = root[field]
+  if (fieldExpr.includes(Symbols.PLUS)) {
+    const fields = fieldExpr.split(Symbols.PLUS)
+    const pick = (obj: any) => {
+      const res = {}
+      fields.forEach(f => {
+        if (Object.prototype.hasOwnProperty.call(obj, f)) {
+          res[f] = obj[f]
+        } else {
+          throwPathDoesNotExistAt(path)
+        }
+      })
+      return res
+    }
+
+    if (Array.isArray(root)) {
+      nextRoot = root.map(pick)
+    } else {
+      nextRoot = pick(root)
+    }
   } else {
-    throwPathDoesNotExistAt(path)
+    const field = fieldExpr
+    if (Array.isArray(root)) {
+      nextRoot = root.map(element => {
+        if (Object.prototype.hasOwnProperty.call(element, field)) {
+          return element[field]
+        }
+        throwPathDoesNotExistAt(path)
+      })
+    } else if (Object.prototype.hasOwnProperty.call(root, field)) {
+      nextRoot = root[field]
+    } else {
+      throwPathDoesNotExistAt(path)
+    }
   }
 
   return parsePath(nextRoot, rest)
@@ -128,7 +158,11 @@ const parseLBrack = <T>(root: T[], path: string) => {
       break
     }
     case Symbols.NONE: {
-      return root.map(element => parsePath(element, rest))
+      const result = root.map(element => parsePath(element, rest))
+      if (rest[1] === Symbols.REDUCE) {
+        return result.reduce((acc, val) => acc.concat(val), [])
+      }
+      return result
     }
     default: {
       const expression = subPath
