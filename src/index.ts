@@ -2,6 +2,8 @@ const Symbols = {
   DOT: '.',
   LBRACK: '[',
   RBRACK: ']',
+  LESS_THAN: '<',
+  PLUS: '+',
   CHAR: 'CHAR',
   EXP: 'EXP',
   NONE: 'NONE',
@@ -24,6 +26,10 @@ const getToken = (path: string): string => {
       return Symbols.LBRACK
     case Symbols.RBRACK:
       return Symbols.RBRACK
+    case Symbols.LESS_THAN:
+      return Symbols.LESS_THAN
+    case Symbols.PLUS:
+      return Symbols.PLUS
     default:
       return Symbols.CHAR
   }
@@ -41,6 +47,8 @@ const parsePath = (root: Object, path: string = '') => {
       return parseLBrack(root as Array<any>, path)
     case Symbols.RBRACK:
       return parseRBrack(root, path)
+    case Symbols.LESS_THAN:
+      return parseLessThan(root, path)
     case Symbols.CHAR:
       return parseObjectField(root, path)
     case Symbols.NONE:
@@ -98,16 +106,29 @@ const parseObjectField = (root: Object, path: string = '') => {
   let nextRoot
 
   if (Array.isArray(root)) {
-    nextRoot = root.map(element => {
-      if (Object.prototype.hasOwnProperty.call(element, field)) {
-        return element[field]
-      }
-      throwPathDoesNotExistAt(path)
-    })
-  } else if (Object.prototype.hasOwnProperty.call(root, field)) {
+    return root.map(element => parsePath(element, path))
+  }
+
+  if (Object.prototype.hasOwnProperty.call(root, field)) {
     nextRoot = root[field]
   } else {
     throwPathDoesNotExistAt(path)
+  }
+
+  if (getToken(rest) === Symbols.PLUS) {
+    const result = { [field]: nextRoot }
+    let currentPath = rest
+    while (getToken(currentPath) === Symbols.PLUS) {
+      currentPath = currentPath.slice(1)
+      const { scan: nextField, rest: afterField } = scanPathUntil(currentPath, signal)
+      if (Object.prototype.hasOwnProperty.call(root, nextField)) {
+        result[nextField] = root[nextField]
+      } else {
+        throwPathDoesNotExistAt(nextField)
+      }
+      currentPath = afterField
+    }
+    return parsePath(result, currentPath)
   }
 
   return parsePath(nextRoot, rest)
@@ -128,6 +149,11 @@ const parseLBrack = <T>(root: T[], path: string) => {
       break
     }
     case Symbols.NONE: {
+      if (getToken(rest.slice(1)) === Symbols.LESS_THAN) {
+        const actualRest = rest.slice(2)
+        const results = root.map(element => parsePath(element, actualRest))
+        return results.reduce((acc, val) => acc.concat(val), [])
+      }
       return root.map(element => parsePath(element, rest))
     }
     default: {
@@ -138,6 +164,15 @@ const parseLBrack = <T>(root: T[], path: string) => {
   }
   //  returns next root
   return parsePath(nextRoot, rest)
+}
+
+const parseLessThan = (root: any, path: string) => {
+  const rest = path.slice(1)
+  if (Array.isArray(root)) {
+    const results = root.map(element => parsePath(element, rest))
+    return results.reduce((acc, val) => acc.concat(val), [])
+  }
+  return parsePath(root, rest)
 }
 
 const parseRBrack = (root: Object, path: String) => {
